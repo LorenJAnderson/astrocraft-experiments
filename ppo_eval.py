@@ -107,7 +107,7 @@ dataset = None
 model1 = CQLA2C(dataset)
 env = CTFENVMA(1, 1, 0)
 ppo = MaskablePPO(MaskableActorCriticPolicy, DummyEnv(1, 1, 0), seed=42, verbose=1)
-ppo.load('./ppo_agent.zip')
+ppo.load('./ppo/ppo_agent.zip')
 
 # PPO v models
 weights = ['0','4','8']

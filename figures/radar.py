@@ -5,12 +5,12 @@ from math import pi
 # Set data
 df = pd.DataFrame({
     'group': ['A', 'B', 'C'],
-    'Draw Rate': [0.0, 0.33, 1],
-    '          Aggression': [0, 1, 0.96],
-    '     Fuel Use': [1, 0.466, 0.441],
+    'Draw Rate': [0.0, 1.0, 0.0],
+    '          Aggression': [0, 1, 36/55],
+    '     Fuel Use': [1, 59.126/98.419, 59.308/98.419],
     'Max Orbital': [1, 0.0, 0.0],
-    'Action Entropy               ': [1, 0.110, 0.110],
-    'Episode Length                ': [0.681, 1, 0.978]
+    'Action Entropy               ': [1, .0558/0.4339, .0766/0.4339],
+    'Episode Length                ': [20.448/36.195, 1, 34.924/36.195]
 })
 
 # ------- PART 1: Create background
