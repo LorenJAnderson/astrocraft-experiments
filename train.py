@@ -131,7 +131,7 @@ class PolicyNet(nn.Module):
 class CQLA2C(nn.Module):
     """An A2C implementation with q-value pessimism built in"""
 
-    def __init__(self, train_data):
+    def __init__(self, train_data, domain=3):
         """Defines the neural network to be used"""
         super(CQLA2C, self).__init__()
         
@@ -150,6 +150,7 @@ class CQLA2C(nn.Module):
         self.data = {0:{0: data_0_0}, 1:{0: data_1_0}}
 
         self.outcomes = []
+        self.domain = domain
 
     def forward(self, x, lstm_value, lstm_policy):
         """Conducts a forward pass of x through the network"""
@@ -363,17 +364,37 @@ class CQLA2C(nn.Module):
                 self.save_weights(weights_path + "/_online_{}.pth".format(episode // 100))
                 
         loop.close()
-        
+
     def select_action(self, state, rew, term, trunc, info, hn, cn):
         """Selects a set of actions based on the current state and available actions"""
         mask = torch.BoolTensor(state['action_mask'][0]).to(device, non_blocking=True)
         state = state['observation']
+        w = torch.tensor([0,0,0,0,0,0,0,0,100,100,100,100,100,100]).to(device)
+
+        # mask[8:10] = bool(state[1,4]) and mask[8:10] # Only return to base if you have the flag
+        # mask[10:12] = not bool(state[1,4]) and mask[10:12]   # Only capture flag if not already flagged
+        # if state[1,-2] == 0 and not state[1,5]: # If on orbital 0 and not transferring, transfer
+        #     mask[0] = False
+
+        # Tweak mask based on state info
+        if self.domain in [0,3]:
+            #print(0)
+            mask[8:10] = bool(state[1,4]) and mask[8:10] # Only return to base if you have the flag
+        if self.domain in [1,3]:
+            #print(1)
+            mask[10:12] = not bool(state[1,4]) and mask[10:12]   # Only capture flag if not already flagged
+        if self.domain in [2,3]:
+            #print(2)
+            if state[1,-2] == 0 and not state[1,5]: # If on orbital 0 and not transferring, transfer
+                mask[0] = False
 
         with torch.no_grad():
             state = torch.from_numpy(normalize_state(state)[:,2:].flatten()).unsqueeze(0)
             state = state.to(device)
             logits,(hn,cn) = self.policy_net.forward(state, (hn, cn))
-            logits = logits.masked_fill(~mask, -float("inf"))
+            #if self.domain in [0,1,2,3] else logits
+            logits = (logits+w if self.domain in [0,1,2,3] else logits).masked_fill(~mask, -float("inf"))
+            #logits = logits.masked_fill(~mask, -float("inf"))
             probs = F.softmax(logits, dim=-1)
             return np.array([torch.multinomial(probs, 1).item()]), (hn, cn)
         
