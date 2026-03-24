@@ -101,76 +101,77 @@ def ppo_v_model(model):
         if term['player0'] or term['player1'] or (trunc['player0'] and trunc['player1']):
             return rew0
         
-outcomes = {}
+if __name__ == "__main__":
+    outcomes = {}
 
-dataset = None
-model1 = CQLA2C(dataset)
-env = CTFENVMA(1, 1, 0)
-ppo = MaskablePPO(MaskableActorCriticPolicy, DummyEnv(1, 1, 0), seed=42, verbose=1)
-ppo.load('./ppo/ppo_agent.zip')
+    dataset = None
+    model1 = CQLA2C(dataset)
+    env = CTFENVMA(1, 1, 0)
+    ppo = MaskablePPO(MaskableActorCriticPolicy, DummyEnv(1, 1, 0), seed=42, verbose=1)
+    ppo.load('./ppo/ppo_agent.zip')
 
-# PPO v models
-weights = ['0','4','8']
-for w1 in weights:
-    # Load weights
-    if w1 == '8':
-        domain = 3
+    # PPO v models
+    weights = ['0','4','8']
+    for w1 in weights:
+        # Load weights
+        if w1 == '8':
+            domain = 3
+            
+        else:
+            domain = None
+
+        model1.load_weights("./weights/"+w1+".pth")
+        model1.domain = domain
+        m1 = []
         
-    else:
-        domain = None
+        # Play 100 games
+        for _ in range(100):
+            print("({})\tgame:{}".format(w1,_), end='\r')
+            
+            s1 = ppo_v_model(model1)
+            m1.append(s1)
+            
+        # Record W/D
+        outcomes[("PPO",w1)] = {"W": m1.count(1) / 100, "D": m1.count(0) / 100}
 
-    model1.load_weights("./weights/"+w1+".pth")
-    model1.domain = domain
+    # PPO vs Bots
     m1 = []
-    
+
     # Play 100 games
     for _ in range(100):
+
+        # Build a bot
+        p_capture_slow = np.random.uniform(0,.5)
+        p_return_slow = np.random.uniform(.5,.7)
+        p_capture_fast = np.random.uniform(.337,1)
+        p_return_fast = np.random.uniform(.45,1)
+        p_intercept_slow = np.random.uniform(.5,1)
+        p_intercept_fast = np.random.uniform(.62,1)
+        orb_norm = 0
+        while abs(orb_norm - 1) > .1:
+            p_orbital_1 = np.random.uniform(.1,.2)
+            p_orbital_2 = np.random.uniform(.17,.2)
+            p_orbital_3 = np.random.uniform(.12,.15)
+            p_orbital_4 = np.random.uniform(0,.12)
+            p_orbital_5 = np.random.uniform(0,.12)
+            p_orbital_6 = np.random.uniform(.18,.27)
+            p_orbital_7 = np.random.uniform(0,.17)
+            orbitals = [p_orbital_1, p_orbital_2, p_orbital_3, p_orbital_4, p_orbital_5, p_orbital_6, p_orbital_7]
+            orb_norm = sum(orbitals)
+
+        orbitals = [x/orb_norm for x in orbitals]
+
+        p_dodge = np.random.uniform(.48,1)
+        p_random_traj_change = 0
+
+        bot = OfflineDataGenerator(1, p_capture_slow, p_return_slow, p_capture_fast, p_return_fast, p_intercept_slow, p_intercept_fast, orbitals, p_dodge, p_random_traj_change)
         print("({})\tgame:{}".format(w1,_), end='\r')
         
-        s1 = ppo_v_model(model1)
+        s1 = ppo_v_bot(bot)
         m1.append(s1)
         
     # Record W/D
-    outcomes[("PPO",w1)] = {"W": m1.count(1) / 100, "D": m1.count(0) / 100}
+    outcomes[('PPO','bot')] = {"W": m1.count(1) / 100, "D": m1.count(0) / 100}
 
-# PPO vs Bots
-m1 = []
-
-# Play 100 games
-for _ in range(100):
-
-    # Build a bot
-    p_capture_slow = np.random.uniform(0,.5)
-    p_return_slow = np.random.uniform(.5,.7)
-    p_capture_fast = np.random.uniform(.337,1)
-    p_return_fast = np.random.uniform(.45,1)
-    p_intercept_slow = np.random.uniform(.5,1)
-    p_intercept_fast = np.random.uniform(.62,1)
-    orb_norm = 0
-    while abs(orb_norm - 1) > .1:
-        p_orbital_1 = np.random.uniform(.1,.2)
-        p_orbital_2 = np.random.uniform(.17,.2)
-        p_orbital_3 = np.random.uniform(.12,.15)
-        p_orbital_4 = np.random.uniform(0,.12)
-        p_orbital_5 = np.random.uniform(0,.12)
-        p_orbital_6 = np.random.uniform(.18,.27)
-        p_orbital_7 = np.random.uniform(0,.17)
-        orbitals = [p_orbital_1, p_orbital_2, p_orbital_3, p_orbital_4, p_orbital_5, p_orbital_6, p_orbital_7]
-        orb_norm = sum(orbitals)
-
-    orbitals = [x/orb_norm for x in orbitals]
-
-    p_dodge = np.random.uniform(.48,1)
-    p_random_traj_change = 0
-
-    bot = OfflineDataGenerator(1, p_capture_slow, p_return_slow, p_capture_fast, p_return_fast, p_intercept_slow, p_intercept_fast, orbitals, p_dodge, p_random_traj_change)
-    print("({})\tgame:{}".format(w1,_), end='\r')
-    
-    s1 = ppo_v_bot(bot)
-    m1.append(s1)
-    
-# Record W/D
-outcomes[('PPO','bot')] = {"W": m1.count(1) / 100, "D": m1.count(0) / 100}
-
-with open("./ppo_outcomes.pkl", 'wb') as outfile:
-    pkl.dump(outcomes, outfile)
+    with open("./ppo_outcomes.pkl", 'wb') as outfile:
+        pkl.dump(outcomes, outfile)
